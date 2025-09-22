@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "insights-api"
+version = "0.1.0"
+description = ""
+authors = ["korg1000 <korg1000@yandex.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.5"
+sqlalchemy = "^2.0.36"
+asyncpg = "^0.30.0"
+uvicorn = "^0.32.1"
+pydantic-settings = "^2.2.1"
+black = "^24.2.0"
+alembic = "^1.13.1"
+greenlet = "^3.0.3"
+common = { path = "../common", develop = true }
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

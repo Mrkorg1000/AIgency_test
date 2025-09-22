@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "migrations"
+version = "0.1.0"
+description = "Database migrations for Lead Triage project"
+authors = ["korg1000 <korg1000@yandex.ru>"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+sqlalchemy = "^2.0.36"
+alembic = "^1.13.1"
+asyncpg = "^0.30.0"
+pydantic-settings = "^2.2.1"
+common = { path = "../common" }
+python-dotenv = "^1.1.1"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
