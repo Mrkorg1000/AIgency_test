@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from common.database import get_async_session
-from intake_api.dependencies import get_redis, verify_idempotency_key
+from dependencies import get_redis, verify_idempotency_key
 from common.models import Lead
 from common.schemas import LeadCreate, LeadResponse
 

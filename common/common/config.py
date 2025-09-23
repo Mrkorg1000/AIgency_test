@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     
     REDIS_URL: str
+    REDIS_STREAM: str
+    REDIS_CONSUMER_GROUP: str  
+    REDIS_CONSUMER_NAME: str
+
+    BATCH_SIZE: 1
+    STREAM_BLOCK_TIME: int
+    
+    LLM_ADAPTER: str
     
     model_config = SettingsConfigDict(
         env_file=".env",

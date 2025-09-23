@@ -7,12 +7,16 @@ RUN pip install "poetry==$POETRY_VERSION"
 
 WORKDIR /app
 
-COPY ./common /common
+COPY common/ ./common/
 
-COPY ./pyproject.toml ./poetry.lock ./
+RUN cd common && pip install -e .
 
-RUN pip install -e . && pip install -e /common
+COPY triage_worker/pyproject.toml triage_worker/poetry.lock ./
 
-COPY . .
+RUN poetry config virtualenvs.create false && poetry install --only main
 
-CMD ["python", "-m", "triage_worker.main"]
+COPY triage_worker/ ./triage_worker/
+
+WORKDIR /app/triage_worker
+
+CMD ["python", "-m", "main"]

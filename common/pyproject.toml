@@ -3,9 +3,7 @@ name = "common"
 version = "0.1.0"
 description = ""
 authors = ["korg1000 <korg1000@yandex.ru>"]
-packages = [
-    { include = "common" }
-]
+
 
 [tool.poetry.dependencies]
 python = "^3.12"

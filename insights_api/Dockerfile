@@ -7,14 +7,19 @@ RUN pip install "poetry==$POETRY_VERSION"
 
 WORKDIR /app
 
-COPY ./common /common
+COPY common/ ./common/
 
-COPY ./pyproject.toml ./poetry.lock ./
+RUN cd common && pip install -e .
 
-RUN pip install -e . && pip install -e /common
+COPY insights_api/pyproject.toml insights_api/poetry.lock ./
 
-COPY . .
+RUN poetry config virtualenvs.create false && poetry install --only main
+
+COPY insights_api/ ./insights_api/
+
+WORKDIR /app/insights_api
 
 EXPOSE 8001
 
-CMD ["uvicorn", "intake.api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+

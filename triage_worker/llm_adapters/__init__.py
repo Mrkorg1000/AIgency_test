@@ -1,6 +1,6 @@
-from triage_worker.llm_adapters.rule_based import RuleBasedLLM
-from triage_worker.llm_adapters.base import BaseLLMAdapter
-from triage_worker.config.config import settings
+from llm_adapters.rule_based import RuleBasedLLM
+from llm_adapters.base import BaseLLMAdapter
+from common.config import settings
 
 def get_llm_adapter() -> BaseLLMAdapter:
     """

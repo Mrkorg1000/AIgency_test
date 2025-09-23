@@ -6,8 +6,8 @@ import redis.asyncio as redis
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from triage_worker.config.config import settings
-from triage_worker.processor import MessageProcessor
+from common.config import settings
+from processor import MessageProcessor
 
 
 # Глобальные переменные для graceful shutdown
@@ -39,7 +39,7 @@ async def main_loop():
     )
     
     # Подключаемся к БД
-    engine = create_async_engine(settings.DATABASE_URL, echo=settings.DB_ECHO)
+    engine = create_async_engine(settings.database_url)
     async_session = sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )

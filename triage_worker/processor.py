@@ -2,10 +2,10 @@ from typing import Dict, Any
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import ValidationError
-from triage_worker.schemas import InsightCreate, LLMResponse, LeadEvent, LLMRequest
-from triage_worker.insight_service import InsightService
+from common.schemas import InsightCreate, LLMResponse, LeadEvent, LLMRequest
+from insight_service import InsightService
 from llm_adapters import get_llm_adapter
-from triage_worker.exceptions import DuplicateInsightError
+from exceptions import DuplicateInsightError
 
 class MessageProcessor:
     """

@@ -1,10 +1,10 @@
-from triage_worker.schemas import InsightCreate
+from common.schemas import InsightCreate
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional
-from triage_worker.models import Insight
-from triage_worker.schemas import InsightCreate
+from common.models import Insight
+
 
 class InsightService:
     

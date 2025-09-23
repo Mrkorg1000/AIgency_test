@@ -17,7 +17,7 @@ alembic = "^1.13.1"
 greenlet = "^3.0.3"
 redis = "^5.0.0"
 aioredis = "^2.0.0"
-common = { path = "../common", develop = true }
+email-validator = "^2.0.0"
 
 
 [build-system]
