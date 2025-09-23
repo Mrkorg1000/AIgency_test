@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from triage_worker.schemas import LLMRequest, LLMResponse
+from common.schemas import LLMRequest, LLMResponse
 
 class BaseLLMAdapter(ABC):
     """Abstract base class for all LLM adapters"""

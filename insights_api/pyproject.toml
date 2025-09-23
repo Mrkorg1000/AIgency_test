@@ -15,7 +15,7 @@ pydantic-settings = "^2.2.1"
 black = "^24.2.0"
 alembic = "^1.13.1"
 greenlet = "^3.0.3"
-common = { path = "../common", develop = true }
+email-validator = "^2.0.0"
 
 
 [build-system]

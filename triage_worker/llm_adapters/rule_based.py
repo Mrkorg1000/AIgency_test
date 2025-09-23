@@ -1,7 +1,7 @@
 import re
 from typing import Dict, List
 from .base import BaseLLMAdapter
-from triage_worker.schemas import LLMRequest, LLMResponse
+from common.schemas import LLMRequest, LLMResponse
 
 class RuleBasedLLM(BaseLLMAdapter):
     """
