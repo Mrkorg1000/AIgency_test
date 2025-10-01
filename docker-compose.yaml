@@ -33,17 +33,21 @@ services:
       - lead-triage-network
 
   # Сервис для миграций
-  # migrations:
-  #   build:
-  #     context: .
-  #     dockerfile: migrations.Dockerfile
-  #   environment:
-  #     - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-  #   depends_on:
-  #     - postgres
-  #   networks:
-  #     - lead-triage-network
-  #   command: ["alembic", "upgrade", "head"]
+  alembic:
+    build:
+      context: .
+      dockerfile: alembic/Dockerfile
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+    depends_on:
+      - postgres
+    networks:
+      - lead-triage-network
+    command: ["sh", "-c", "mkdir -p migrations/versions; if [ -z \"$(ls -A migrations/versions 2>/dev/null)\" ]; then alembic -c alembic.ini revision --autogenerate -m 'init'; fi; alembic -c alembic.ini upgrade head"]
 
   intake-api:
     build:

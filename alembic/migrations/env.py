@@ -17,15 +17,33 @@ print(f"DEBUG (env.py): Does gl.env exist at this path? {os.path.exists(dotenv_p
 print(f"DEBUG (env.py): Value of POSTGRES_HOST from os.environ: {os.environ.get('POSTGRES_HOST')}")
 
 from common.models import Base
-from common.config import settings
+# from common.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
+# Формируем URL базы без зависимости от common.config.settings,
+# чтобы во время миграций не требовались несвязанные переменные (Redis и т.п.)
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    pg_user = os.getenv("POSTGRES_USER", "postgres")
+    pg_password = os.getenv("POSTGRES_PASSWORD", "postgres")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "5432")
+    pg_db = os.getenv("POSTGRES_DB", "postgres")
+    database_url = f"postgresql+psycopg://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
+else:
+    # Если из окружения пришла async-URL, приводим к sync-драйверу psycopg
+    if database_url.startswith("postgresql+asyncpg://"):
+        database_url = database_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+    elif database_url.startswith("postgresql://") and "+" not in database_url.split("://", 1)[0]:
+        # Явно укажем драйвер psycopg
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
 config.set_main_option(
     name="sqlalchemy.url",
-    value=f"{settings.database_url}?async_fallback=True",
+    value=database_url,
 )
 
 # Interpret the config file for Python logging.
