@@ -1,4 +1,5 @@
 import json
+import uuid
 from redis.asyncio import Redis
 from fastapi import HTTPException, status
 from typing import Optional, Tuple
@@ -13,7 +14,7 @@ async def get_redis() -> Redis:
 
 async def verify_idempotency_key(
     redis: Redis,
-    idempotency_key: str,
+    idempotency_key: uuid.UUID,
     current_request_data: Optional[dict] = None
 ) -> Tuple[bool, Optional[dict]]:
     """
