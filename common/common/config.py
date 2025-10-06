@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     REDIS_URL: str
     REDIS_STREAM: str
     REDIS_CONSUMER_GROUP: str  
-    REDIS_CONSUMER_NAME: str
+    MAX_CONCURRENT_REQUESTS: int
 
-    BATCH_SIZE: 1
+    BATCH_SIZE: int = 1
     STREAM_BLOCK_TIME: int
     
     LLM_ADAPTER: str

@@ -39,10 +39,20 @@ async def create_lead(
     Requires the Idempotency-Key header.
     """
     try:
+        # Валидация формата UUID на уровне эндпойнта (вернём 422 с понятным сообщением)
+        try:
+            validated_idempotency_key = uuid.UUID(idempotency_key)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Idempotency-Key must be a valid UUID",
+            )
+
+        print(f"[create_lead] Received lead_data={lead_data}")
         # Checking idempotency
         is_duplicate, cached_data = await verify_idempotency_key(
             redis, 
-            idempotency_key,
+            validated_idempotency_key,
             lead_data.dict()
         )
         
@@ -58,23 +68,25 @@ async def create_lead(
         db.add(lead)
         await db.commit()
         await db.refresh(lead)
+        print(f"[create_lead] Lead created id={lead.id}")
         
         # Preparing data for cashing
         cache_payload = {
             "status_code": status.HTTP_201_CREATED,
-            "response_data": LeadResponse.from_orm(lead).dict(),
+            "response_data": LeadResponse.model_validate(lead).model_dump(mode="json"),
             "request_data": lead_data.dict()  # Сохраняем для будущих проверок
         }
         
         # Saving to Redis
         await redis.setex(
-            f"idempotency:{idempotency_key}",
+            f"idempotency:{validated_idempotency_key}",
             86400,  # 24 часа
             json.dumps(cache_payload)
         )
         
         # Publishing an event to queue (for triage worker)
-        await redis.xadd("lead_events", {
+        from common.config import settings
+        await redis.xadd(settings.REDIS_STREAM, {
             "event_id": str(uuid.uuid4()),
             "type": "lead.created",
             "lead_id": str(lead.id),

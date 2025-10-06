@@ -53,6 +53,7 @@ class LLMResponse(BaseModel):
     
 class InsightBase(BaseModel):
     lead_id: UUID
+    content_hash: str
     intent: IntentEnum
     priority: PriorityEnum
     next_action: NextActionEnum

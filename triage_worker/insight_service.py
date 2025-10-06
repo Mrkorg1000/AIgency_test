@@ -18,14 +18,25 @@ class InsightService:
         Возвращает True если создан, False если дубликат.
         """
         # Проверяем дубликат
-        if await self.insight_exists(session, insight_data.lead_id, insight_data.content_hash):
+        exists = await self.insight_exists(session, insight_data.lead_id, insight_data.content_hash)
+        print(f"[insight_service] insight_exists before create: {exists}")
+        if exists:
             return False
             
         # Создаем и сохраняем инсайт
-        insight = Insight(**insight_data.dict())
-        session.add(insight)
-        await session.commit()
-        return True
+        try:
+            print(f"[insight_service] Creating Insight ORM object with data={insight_data}")
+            insight = Insight(**insight_data.dict())
+            session.add(insight)
+            await session.commit()
+            print(f"[insight_service] Insight committed")
+            return True
+        except Exception as e:
+            import traceback
+            print(f"[insight_service] Error during commit: {e}")
+            traceback.print_exc()
+            await session.rollback()
+            return False
     
     async def insight_exists(
         self, 
@@ -40,4 +51,6 @@ class InsightService:
             (Insight.content_hash == content_hash)
         )
         result = await session.execute(stmt)
-        return result.scalar_one_or_none() is not None
+        exists = result.scalar_one_or_none() is not None
+        print(f"[insight_service] insight_exists query={exists}")
+        return exists
