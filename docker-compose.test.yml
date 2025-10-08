@@ -1,0 +1,155 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: lead_triage_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d lead_triage_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Сервис для миграций (тестовая БД)
+  alembic-test:
+    build:
+      context: .
+      dockerfile: alembic/Dockerfile
+    environment:
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=lead_triage_test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    networks:
+      - test-network
+    command: ["sh", "-c", "mkdir -p migrations/versions; if [ -z \"$(ls -A migrations/versions 2>/dev/null)\" ]; then alembic -c alembic.ini revision --autogenerate -m 'init'; fi; alembic -c alembic.ini upgrade head"]
+
+  intake-api-test:
+    build:
+      context: .
+      dockerfile: intake_api/Dockerfile
+    ports:
+      - "8100:8000"
+    environment:
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=lead_triage_test
+      - REDIS_URL=redis://redis-test:6379/0
+      - REDIS_STREAM=lead_events_test
+      - REDIS_CONSUMER_GROUP=triage_group_test
+      - MAX_CONCURRENT_REQUESTS=10
+      - BATCH_SIZE=10
+      - STREAM_BLOCK_TIME=5000
+      - LLM_ADAPTER=RULE_BASED
+      - TEST_MODE=true
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      alembic-test:
+        condition: service_completed_successfully
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  insights-api-test:
+    build:
+      context: .
+      dockerfile: insights_api/Dockerfile
+    ports:
+      - "8101:8001"
+    environment:
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=lead_triage_test
+      - REDIS_URL=redis://redis-test:6379/0
+      - REDIS_STREAM=lead_events_test
+      - REDIS_CONSUMER_GROUP=triage_group_test
+      - MAX_CONCURRENT_REQUESTS=10
+      - BATCH_SIZE=10
+      - STREAM_BLOCK_TIME=5000
+      - LLM_ADAPTER=RULE_BASED
+      - TEST_MODE=true
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      alembic-test:
+        condition: service_completed_successfully
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  triage-worker-test:
+    build:
+      context: .
+      dockerfile: triage_worker/Dockerfile
+    environment:
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=lead_triage_test
+      - REDIS_URL=redis://redis-test:6379/0
+      - REDIS_STREAM=lead_events_test
+      - REDIS_CONSUMER_GROUP=triage_group_test
+      - MAX_CONCURRENT_REQUESTS=10
+      - BATCH_SIZE=10
+      - STREAM_BLOCK_TIME=5000
+      - LLM_ADAPTER=RULE_BASED
+      - TEST_MODE=true
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      alembic-test:
+        condition: service_completed_successfully
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
