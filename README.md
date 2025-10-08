@@ -20,7 +20,6 @@
 - [API Documentation](#-api-documentation)
 - [Testing](#-testing)
 - [Project Structure](#-project-structure)
-- [Task Requirements](#-task-requirements)
 
 ---
 
