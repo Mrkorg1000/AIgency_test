@@ -3,18 +3,19 @@ from typing import Dict, List
 from .base import BaseLLMAdapter
 from common.schemas import LLMRequest, LLMResponse
 
+
 class RuleBasedLLM(BaseLLMAdapter):
     """
-    LLM адаптер на основе правил (keyword matching).
-    Не требует внешних API вызовов, работает локально.
+    Rule-based LLM adapter using keyword matching.
+    Does not require external API calls, works locally.
     """
     
     def __init__(self):
-        # Словарь правил для определения intent
+        # Rules dictionary for intent detection
         self.intent_rules: Dict[str, Dict] = {
             'buy': {
                 'keywords': ['цена', 'стоимость', 'купить', 'заказ', 'прайс', 'стоит', 'price', 'cost', 'buy'],
-                'priority': 'P1'  # Дефолтный приоритет для intent
+                'priority': 'P1'  # Default priority for this intent
             },
             'support': {
                 'keywords': ['помощь', 'сломал', 'ошибка', 'не работает', 'bug', 'help', 'support'],
@@ -30,15 +31,15 @@ class RuleBasedLLM(BaseLLMAdapter):
             }
         }
         
-        # Правила для определения приоритета
+        # Rules for priority detection
         self.priority_rules: Dict[str, List[str]] = {
             'P0': ['срочно', 'urgent', 'asap', 'немедленно', 'критично'],
             'P1': ['скоро', 'soon', 'ближайшее время', 'недолго'], 
-            'P2': [],  # Базовый приоритет
+            'P2': [],  # Base priority
             'P3': ['когда-нибудь', 'потом', 'не спеша']
         }
         
-        # Маппинг intent + priority -> next_action
+        # Mapping intent + priority -> next_action
         self.action_rules: Dict[str, Dict[str, str]] = {
             'buy': {'P0': 'call', 'P1': 'email', 'P2': 'email', 'P3': 'qualify'},
             'support': {'P0': 'call', 'P1': 'email', 'P2': 'email', 'P3': 'email'},
@@ -49,23 +50,29 @@ class RuleBasedLLM(BaseLLMAdapter):
 
     async def triage(self, request: LLMRequest) -> LLMResponse:
         """
-        Анализирует заметку лида на основе ключевых слов.
+        Analyzes lead note based on keywords.
+        
+        Args:
+            request: LLMRequest with note to analyze
+            
+        Returns:
+            LLMResponse with intent, priority, next_action, confidence, and tags
         """
         note_lower = request.note.lower()
         
-        # Определяем intent (намерение)
+        # Detect intent
         intent = self._detect_intent(note_lower)
         
-        # Определяем priority (приоритет)
+        # Detect priority
         priority = self._detect_priority(note_lower, intent)
         
-        # Определяем next_action (следующее действие)
+        # Determine next action
         next_action = self._get_next_action(intent, priority)
         
-        # Рассчитываем confidence (уверность)
+        # Calculate confidence
         confidence = self._calculate_confidence(note_lower, intent)
         
-        # Генерируем tags (теги)
+        # Generate tags
         tags = self._generate_tags(note_lower)
         
         return LLMResponse(
@@ -78,8 +85,8 @@ class RuleBasedLLM(BaseLLMAdapter):
 
     def _detect_intent(self, note: str) -> str:
         """
-        Определяет intent на основе ключевых слов.
-        Возвращает 'other' если не найден подходящий intent.
+        Detects intent based on keywords.
+        Returns 'other' if no matching intent found.
         """
         for intent, rules in self.intent_rules.items():
             if any(keyword in note for keyword in rules['keywords']):
@@ -88,38 +95,38 @@ class RuleBasedLLM(BaseLLMAdapter):
 
     def _detect_priority(self, note: str, intent: str) -> str:
         """
-        Определяет приоритет. Сначала ищет слова приоритета,
-        если не находит - использует дефолтный для intent.
+        Detects priority. First searches for priority keywords,
+        if not found - uses default for the intent.
         """
-        # Ищем слова приоритета в тексте
+        # Search for priority keywords in text
         for priority, keywords in self.priority_rules.items():
             if any(keyword in note for keyword in keywords):
                 return priority
         
-        # Используем дефолтный приоритет для intent
+        # Use default priority for intent
         return self.intent_rules.get(intent, {}).get('priority', 'P2')
 
     def _get_next_action(self, intent: str, priority: str) -> str:
         """
-        Определяет следующее действие на основе intent и priority.
+        Determines next action based on intent and priority.
         """
         return self.action_rules.get(intent, {}).get(priority, 'qualify')
 
     def _calculate_confidence(self, note: str, intent: str) -> float:
         """
-        Рассчитывает уверность в результате (0.0 - 1.0).
+        Calculates confidence in the result (0.0 - 1.0).
         """
         if intent == 'other':
-            return 0.3  # Низкая уверность для other
+            return 0.3  # Low confidence for 'other'
         
-        # Чем больше ключевых слов найдено, тем выше уверность
+        # More keywords found = higher confidence
         keywords = self.intent_rules.get(intent, {}).get('keywords', [])
         matches = sum(1 for keyword in keywords if keyword in note)
-        return min(0.3 + matches * 0.2, 0.9)  # От 0.3 до 0.9
+        return min(0.3 + matches * 0.2, 0.9)  # From 0.3 to 0.9
 
     def _generate_tags(self, note: str) -> List[str]:
         """
-        Генерирует дополнительные теги на основе содержимого.
+        Generates additional tags based on content.
         """
         tags = []
         if any(word in note for word in ['срочно', 'urgent', 'asap']):

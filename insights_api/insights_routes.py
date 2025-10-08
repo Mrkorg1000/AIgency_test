@@ -27,9 +27,19 @@ async def get_insight_by_lead_id(
     session: AsyncSession = Depends(get_async_session)
 ) -> InsightResponse:
     """
-    Получает инсайт по идентификатору лида.
+    Retrieves insight by lead ID.
+    
+    Args:
+        lead_id: UUID of the lead to get insight for
+        session: Database session (injected)
+        
+    Returns:
+        InsightResponse: The insight data for the lead
+        
+    Raises:
+        HTTPException: 404 if no insight found for the lead
     """
-    # Простой запрос - ищем любой инсайт для этого lead_id
+    # Query for any insight matching this lead_id
     stmt = select(Insight).where(Insight.lead_id == lead_id)
     
     result = await session.execute(stmt)

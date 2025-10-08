@@ -1,5 +1,4 @@
 from datetime import datetime
-# from enum import Enum
 from uuid import UUID, uuid4
 from typing import List, Optional, Annotated
 from sqlalchemy import JSON, Float, ForeignKey, String, Text, UniqueConstraint, text
@@ -8,16 +7,21 @@ from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 
 from common.enums import IntentEnum, NextActionEnum, PriorityEnum
 
+# Type aliases for common column patterns
 uuid_pk = Annotated[UUID, mapped_column(primary_key=True, default=uuid4)]
 created_dt = Annotated[
     datetime,
     mapped_column(server_default=text("TIMEZONE('utc', now())")),
 ]
 
+
 class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
     pass
 
+
 class Lead(Base):
+    """Lead model representing incoming customer inquiries."""
     __tablename__ = "leads"
     
     id: Mapped[uuid_pk]
@@ -30,6 +34,7 @@ class Lead(Base):
 
 
 class Insight(Base):
+    """Insight model containing AI-generated analysis of leads."""
     __tablename__ = "insights"
     
     id: Mapped[uuid_pk]

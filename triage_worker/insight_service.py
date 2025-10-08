@@ -1,5 +1,4 @@
 from common.schemas import InsightCreate
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional
@@ -7,6 +6,7 @@ from common.models import Insight
 
 
 class InsightService:
+    """Service for managing insights in the database."""
     
     async def create_insight(
         self, 
@@ -14,27 +14,27 @@ class InsightService:
         insight_data: InsightCreate
     ) -> bool:
         """
-        Создает инсайт с проверкой идемпотентности.
-        Возвращает True если создан, False если дубликат.
+        Creates an insight with idempotency check.
+        
+        Args:
+            session: Database session
+            insight_data: Insight data to create
+            
+        Returns:
+            bool: True if created, False if duplicate
         """
-        # Проверяем дубликат
+        # Check for duplicate
         exists = await self.insight_exists(session, insight_data.lead_id, insight_data.content_hash)
-        print(f"[insight_service] insight_exists before create: {exists}")
         if exists:
             return False
             
-        # Создаем и сохраняем инсайт
+        # Create and save insight
         try:
-            print(f"[insight_service] Creating Insight ORM object with data={insight_data}")
             insight = Insight(**insight_data.dict())
             session.add(insight)
             await session.commit()
-            print(f"[insight_service] Insight committed")
             return True
         except Exception as e:
-            import traceback
-            print(f"[insight_service] Error during commit: {e}")
-            traceback.print_exc()
             await session.rollback()
             return False
     
@@ -44,13 +44,21 @@ class InsightService:
         lead_id: UUID, 
         content_hash: str
     ) -> bool:
-        """Проверяет существует ли инсайт для данной пары lead_id + content_hash"""
+        """
+        Checks if insight exists for given lead_id + content_hash pair.
+        
+        Args:
+            session: Database session
+            lead_id: Lead UUID
+            content_hash: Content hash for duplicate detection
+            
+        Returns:
+            bool: True if insight exists, False otherwise
+        """
         from sqlalchemy import select
         stmt = select(Insight).where(
             (Insight.lead_id == lead_id) &
             (Insight.content_hash == content_hash)
         )
         result = await session.execute(stmt)
-        exists = result.scalar_one_or_none() is not None
-        print(f"[insight_service] insight_exists query={exists}")
-        return exists
+        return result.scalar_one_or_none() is not None
