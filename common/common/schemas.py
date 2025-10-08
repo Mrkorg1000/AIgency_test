@@ -7,6 +7,7 @@ from common.enums import IntentEnum, NextActionEnum, PriorityEnum
 
 
 class LeadBase(BaseModel):
+    """Base schema for lead data."""
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     name: Optional[str] = None
@@ -15,43 +16,45 @@ class LeadBase(BaseModel):
 
 
 class LeadCreate(LeadBase):
+    """Schema for creating a new lead."""
     pass
 
 
 class LeadResponse(LeadBase):
+    """Schema for lead API responses."""
     id: UUID
     created_at: datetime
 
     class Config:
         from_attributes = True
-        
-        
-# Lead.created scheme from redis queve
+
+
 class LeadEvent(BaseModel):
+    """Schema for lead.created events in Redis Stream."""
     event_id: UUID
     type: Literal["lead.created"]
     lead_id: UUID
     note: str
-    content_hash: str  # hash for idempotency check
+    content_hash: str  # SHA256 hash for duplicate detection
     occurred_at: datetime
-    
- 
-# LLM adapter Request
+
+
 class LLMRequest(BaseModel):
+    """Request schema for LLM adapter."""
     note: str
-    
-    
+
 
 class LLMResponse(BaseModel):
+    """Response schema from LLM adapter."""
     intent: IntentEnum
     priority: PriorityEnum
     next_action: NextActionEnum
-    confidence: float = Field(ge=0.0, le=1.0)  # from 0.0 to 1.0
-    tags: Optional[list[str]] = None
-    
-    
-    
+    confidence: float = Field(ge=0.0, le=1.0)  # Range: 0.0 to 1.0
+    tags: Optional[List[str]] = None
+
+
 class InsightBase(BaseModel):
+    """Base schema for insight data."""
     lead_id: UUID
     content_hash: str
     intent: IntentEnum
@@ -65,9 +68,11 @@ class InsightBase(BaseModel):
 
 
 class InsightCreate(InsightBase):
+    """Schema for creating a new insight."""
     pass
 
 
 class InsightResponse(InsightBase):
+    """Schema for insight API responses."""
     id: UUID
     created_at: datetime

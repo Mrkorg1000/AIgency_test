@@ -36,10 +36,23 @@ async def create_lead(
 ):
     """
     Creates a new lead with idempotency support.
-    Requires the Idempotency-Key header.
+    
+    Args:
+        lead_data: Lead data to create
+        idempotency_key: UUID idempotency key from header (required)
+        redis: Redis client (injected)
+        db: Database session (injected)
+        
+    Returns:
+        LeadResponse: Created lead data (201) or cached response (200)
+        
+    Raises:
+        HTTPException: 422 if idempotency key is not a valid UUID
+        HTTPException: 409 if idempotency key used with different data
+        HTTPException: 500 on internal errors
     """
     try:
-        # Валидация формата UUID на уровне эндпойнта (вернём 422 с понятным сообщением)
+        # Validate UUID format at endpoint level (return 422 with clear message)
         try:
             validated_idempotency_key = uuid.UUID(idempotency_key)
         except Exception:
@@ -47,50 +60,42 @@ async def create_lead(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Idempotency-Key must be a valid UUID",
             )
-
-        print(f"[create_lead] Received lead_data={lead_data}")
-        print(f"[create_lead] Idempotency-Key={validated_idempotency_key}")
         
-        # Checking idempotency
+        # Check idempotency
         is_duplicate, cached_data = await verify_idempotency_key(
             redis, 
             validated_idempotency_key,
             lead_data.dict()
         )
         
-        print(f"[create_lead] is_duplicate={is_duplicate}, cached_data={cached_data is not None}")
-        
         if is_duplicate:
-            # retreiving data from cash
-            # Возвращаем 200 вместо оригинального 201, чтобы показать что это кэшированный ответ
-            print(f"[create_lead] Returning cached response with status=200 (original was {cached_data['status_code']})")
+            # Return cached response with 200 to indicate idempotent request
             return JSONResponse(
                 content=cached_data["response_data"],
                 status_code=status.HTTP_200_OK
             )
         
-        # Creating Lead in DB
+        # Create lead in database
         lead = Lead(**lead_data.dict())
         db.add(lead)
         await db.commit()
         await db.refresh(lead)
-        print(f"[create_lead] Lead created id={lead.id}")
         
-        # Preparing data for cashing
+        # Prepare cache payload
         cache_payload = {
             "status_code": status.HTTP_201_CREATED,
             "response_data": LeadResponse.model_validate(lead).model_dump(mode="json"),
-            "request_data": lead_data.dict()  # Сохраняем для будущих проверок
+            "request_data": lead_data.dict()  # Store for future verification
         }
         
-        # Saving to Redis
+        # Save to Redis cache (24 hours TTL)
         await redis.setex(
             f"idempotency:{validated_idempotency_key}",
-            86400,  # 24 часа
+            86400,
             json.dumps(cache_payload)
         )
         
-        # Publishing an event to queue (for triage worker)
+        # Publish event to Redis Stream for triage worker
         from common.config import settings
         await redis.xadd(settings.REDIS_STREAM, {
             "event_id": str(uuid.uuid4()),
@@ -126,7 +131,18 @@ async def get_lead(
     db: AsyncSession = Depends(get_async_session)
 ):
     """
-    Retreive Lead by UUID.
+    Retrieves a lead by UUID.
+    
+    Args:
+        lead_id: UUID of the lead to retrieve
+        db: Database session (injected)
+        
+    Returns:
+        LeadResponse: Lead data
+        
+    Raises:
+        HTTPException: 404 if lead not found
+        HTTPException: 500 on internal errors
     """
     try:
         lead = await db.get(Lead, lead_id)

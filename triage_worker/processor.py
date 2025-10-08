@@ -7,9 +7,10 @@ from insight_service import InsightService
 from llm_adapters import get_llm_adapter
 from exceptions import DuplicateInsightError
 
+
 class MessageProcessor:
     """
-    Redis Streams Message handler.
+    Redis Streams message handler.
     Responsible for converting raw messages into insights.
     """
     
@@ -24,67 +25,92 @@ class MessageProcessor:
         Processes a single message from the queue.
 
         Args:
-            message_data: Raw message data from Redis
+            message_data: Raw message data from Redis
 
         Returns:
-            bool: True if the message was processed successfully,
-            False if an error occurred
+            bool: True if the message was processed successfully,
+                  False if an error occurred
         """
         try:
-            print(f"[processor] Start processing: {message_data}")
-            # 1. Валидация и парсинг сообщения
+            # 1. Validate and parse message
             event = await self._validate_message(message_data)
-            print(f"[processor] Parsed event: {event}")
             
-            # 2. Проверка идемпотентности
+            # 2. Check for duplicates (idempotency)
             if await self._check_duplicate(event):
-                print(f"[processor] Duplicate insight for lead_id={event.lead_id} content_hash={event.content_hash}")
-                return True  # Дубликат - пропускаем
+                return True  # Duplicate - skip processing
                 
-            # 3. Анализ заметки через LLM
+            # 3. Analyze note via LLM
             llm_response = await self._analyze_note(event)
-            print(f"[processor] LLM response: {llm_response}")
             
-            # 4. Сохранение инсайта в БД
+            # 4. Save insight to database
             await self._save_insight(event, llm_response)
-            print(f"[processor] Insight saved for lead_id={event.lead_id}")
             
-            return True  # Успех
+            return True  # Success
             
         except DuplicateInsightError as e:
-            print(f"[processor] DuplicateInsightError: {e}")
-            return True  # Дубликат - уже обработано
+            return True  # Duplicate - already processed
         except ValidationError as e:
-            print(f"[processor] ValidationError while parsing message: {e}")
-            return False  # Невалидное сообщение
+            return False  # Invalid message
         except Exception as e:
             import traceback
-            print(f"[processor] Unexpected error while processing message: {e}")
             traceback.print_exc()
-            return False  # Любая другая ошибка
+            return False  # Any other error
 
     async def _validate_message(self, message_data: Dict[str, Any]) -> LeadEvent:
-        """Валидирует и парсит сырое сообщение в Pydantic модель"""
-        # Redis Streams может возвращать все значения как строки
-        # Pydantic сам справится с UUID и datetime, но убедимся, что есть все поля
+        """
+        Validates and parses raw message into Pydantic model.
+        
+        Args:
+            message_data: Raw message data from Redis
+            
+        Returns:
+            LeadEvent: Validated lead event
+            
+        Raises:
+            ValidationError: If message data is invalid
+        """
+        # Redis Streams may return all values as strings
+        # Pydantic will handle UUID and datetime conversion
         return LeadEvent(**message_data)
 
     async def _check_duplicate(self, event: LeadEvent) -> bool:
-        """Проверяет существует ли уже инсайт для этого события"""
-        exists = await self.insight_service.insight_exists(
+        """
+        Checks if insight already exists for this event.
+        
+        Args:
+            event: Lead event to check
+            
+        Returns:
+            bool: True if insight exists, False otherwise
+        """
+        return await self.insight_service.insight_exists(
             self.db_session, event.lead_id, event.content_hash
         )
-        print(f"[processor] insight_exists={exists}")
-        return exists
 
     async def _analyze_note(self, event: LeadEvent) -> LLMResponse:
-        """Анализирует заметку через LLM адаптер"""
+        """
+        Analyzes note via LLM adapter.
+        
+        Args:
+            event: Lead event with note to analyze
+            
+        Returns:
+            LLMResponse: Analysis results
+        """
         llm_request = LLMRequest(note=event.note)
         return await self.llm_adapter.triage(llm_request)
 
     async def _save_insight(self, event: LeadEvent, llm_response: LLMResponse):
-        """Сохраняет инсайт в БД"""
+        """
+        Saves insight to database.
         
+        Args:
+            event: Lead event
+            llm_response: LLM analysis results
+            
+        Raises:
+            DuplicateInsightError: If insight creation failed (possible duplicate)
+        """
         insight_data = InsightCreate(
             lead_id=event.lead_id,
             content_hash=event.content_hash,
@@ -94,12 +120,11 @@ class MessageProcessor:
             confidence=llm_response.confidence,
             tags=llm_response.tags
         )
-        print(f"[processor] Creating insight: {insight_data}")
+        
         success = await self.insight_service.create_insight(
             session=self.db_session,
             insight_data=insight_data
         )
-        print(f"[processor] create_insight success={success}")
         
         if not success:
             raise DuplicateInsightError("Failed to create insight - possible duplicate")

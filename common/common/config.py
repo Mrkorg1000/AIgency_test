@@ -1,11 +1,8 @@
-from dataclasses import Field
-from typing import Annotated
-from pydantic_settings import BaseSettings
-from pydantic_settings import SettingsConfigDict
-import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
     POSTGRES_HOST: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
@@ -30,6 +27,7 @@ class Settings(BaseSettings):
     
     @property
     def database_url(self) -> str:
+        """Constructs PostgreSQL connection URL for asyncpg."""
         user = self.POSTGRES_USER
         password = self.POSTGRES_PASSWORD
         host = self.POSTGRES_HOST

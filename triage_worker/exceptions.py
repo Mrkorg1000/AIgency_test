@@ -1,19 +1,23 @@
 class TriageWorkerError(Exception):
-    """Базовая ошибка triage-worker"""
+    """Base exception for triage worker."""
     pass
+
 
 class DuplicateInsightError(TriageWorkerError):
-    """Ошибка при попытке создать дубликат инсайта"""
+    """Raised when attempting to create a duplicate insight."""
     pass
+
 
 class LLMServiceError(TriageWorkerError):
-    """Ошибка при вызове LLM сервиса"""
+    """Raised when LLM service call fails."""
     pass
+
 
 class MessageProcessingError(TriageWorkerError):
-    """Ошибка обработки сообщения из очереди"""
+    """Raised when message processing from queue fails."""
     pass
 
+
 class DatabaseError(TriageWorkerError):
-    """Ошибка работы с базой данных"""
+    """Raised when database operation fails."""
     pass
