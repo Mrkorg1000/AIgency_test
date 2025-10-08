@@ -88,10 +88,13 @@ async def main_loop(consumer_name: str):
             mkstream=True
         )
         print(f"[triage_worker] Consumer group created: stream={settings.REDIS_STREAM} group={settings.REDIS_CONSUMER_GROUP}")
-    except redis.ResponseError:
-        print(f"[triage_worker] Consumer group already exists: stream={settings.REDIS_STREAM} group={settings.REDIS_CONSUMER_GROUP}")
+    except redis.ResponseError as e:
+        if "BUSYGROUP" in str(e):
+            print(f"[triage_worker] Consumer group already exists: stream={settings.REDIS_STREAM} group={settings.REDIS_CONSUMER_GROUP}")
     
     semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_REQUESTS)
+    
+    await asyncio.sleep(0.1)
 
     while not shutdown_event.is_set():
         try:
@@ -100,15 +103,20 @@ async def main_loop(consumer_name: str):
                 
                 # Подхватываем зависшие сообщения
                 print(f"[triage_worker] Attempting XAUTOCLAIM for pending messages...")
-                pending_messages = await redis_client.xautoclaim(
-                    name=settings.REDIS_STREAM,
-                    groupname=settings.REDIS_CONSUMER_GROUP,
-                    consumername=consumer_name,
-                    min_idle_time=1000,  # 1 секунда, чтобы быстрее подхватывать зависшие
-                    start_id="0-0",
-                    count=settings.BATCH_SIZE
-                )
-                pending_msgs_list = pending_messages[1] if pending_messages else []
+                try:
+                    pending_messages = await redis_client.xautoclaim(
+                        name=settings.REDIS_STREAM,
+                        groupname=settings.REDIS_CONSUMER_GROUP,
+                        consumername=consumer_name,
+                        min_idle_time=1000,  # 1 секунда, чтобы быстрее подхватывать зависшие
+                        start_id="0-0",
+                        count=settings.BATCH_SIZE
+                    )
+                    pending_msgs_list = pending_messages[1] if pending_messages else []
+                except redis.ResponseError as e:
+                    # Группа ещё не готова или stream не существует
+                    print(f"[triage_worker] XAUTOCLAIM failed (expected on first run): {e}")
+                    pending_msgs_list = []  
                 if pending_msgs_list:
                     print(f"[triage_worker] Claimed {len(pending_msgs_list)} pending messages")
                     tasks = [

@@ -49,6 +49,8 @@ async def create_lead(
             )
 
         print(f"[create_lead] Received lead_data={lead_data}")
+        print(f"[create_lead] Idempotency-Key={validated_idempotency_key}")
+        
         # Checking idempotency
         is_duplicate, cached_data = await verify_idempotency_key(
             redis, 
@@ -56,11 +58,15 @@ async def create_lead(
             lead_data.dict()
         )
         
+        print(f"[create_lead] is_duplicate={is_duplicate}, cached_data={cached_data is not None}")
+        
         if is_duplicate:
             # retreiving data from cash
+            # Возвращаем 200 вместо оригинального 201, чтобы показать что это кэшированный ответ
+            print(f"[create_lead] Returning cached response with status=200 (original was {cached_data['status_code']})")
             return JSONResponse(
                 content=cached_data["response_data"],
-                status_code=cached_data["status_code"]
+                status_code=status.HTTP_200_OK
             )
         
         # Creating Lead in DB
